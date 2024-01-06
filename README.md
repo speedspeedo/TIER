@@ -23,7 +23,7 @@ oraid tx wasm instantiate "$TIER_CODE_ID"                                  \
         }],  
         "oraiswap_contract": {  
           "usdt_contract": "orai1sthrn5ep8ls5vzz8f9gp89khhmedahhdqd244dh9uqzk3hx2pzrsrpzcas",  
-          "orai_contract": "orai1vhndln95yd7rngslzvf6sax6axcshkxqpmpr886ntelh28p9ghuqawp9hn"
+          "orai_swap_router_contract": "orai1vhndln95yd7rngslzvf6sax6axcshkxqpmpr886ntelh28p9ghuqawp9hn"
         },
         "deposits": ["100", "50", "10", "1"],
         "admin":"'"${WALLET_ADDRESS}"'"
@@ -36,7 +36,9 @@ oraid tx wasm instantiate "$TIER_CODE_ID"                                  \
     --label "$TIER_LABEL"                            \
     --home $ORAI_HOME_DIR -y
 
-orai1f8rp2vlg5s7pvyfcnpfms007uyl7856kpe2dcx8hjq2fkt90qfjslfal29
+orai19vrjp7fll6a729v464wlxr8a2xqhcddc0e5f0gxkv4fcyl8n23uspsmyvl\orai19vrjp7fll6a729v464wlxr8a2xqhcddc0e5f0gxkv4fcyl8n23uspsmyvl\
+
+oraid q wasm contract-state smart "$TIER_CONTRACT" '{ "config": {}}' --home $ORAI_HOME_DIR
 
 oraid q wasm contract-state smart "$TIER_CONTRACT" '{ "user_info": {"address":"'"$WALLET_ADDRESS"'"} }'
 
@@ -46,4 +48,27 @@ oraid tx wasm execute "$TIER_CONTRACT" '{ "deposit": {} }' \
     --gas-prices 0.1orai     \
     --from "$WALLET"                                 \
     --amount 2000000orai                            \
-    --yes
+    --home $ORAI_HOME_DIR --yes
+
+    oraid q wasm contract-state smart "orai1vhndln95yd7rngslzvf6sax6axcshkxqpmpr886ntelh28p9ghuqawp9hn" \
+'{
+ "simulate_swap_operations": {
+ "offer_amount": "1000000",
+ "operations": [
+ {
+ "orai_swap": {
+ "offer_asset_info": {
+ "native_token": {
+ "denom": "orai"
+ }
+ },
+ "ask_asset_info": {
+ "token": {
+ "contract_addr": "orai1sthrn5ep8ls5vzz8f9gp89khhmedahhdqd244dh9uqzk3hx2pzrsrpzcas"
+ }
+ }
+ }
+ }
+ ]
+ }
+}' --home $ORAI_HOME_DIR

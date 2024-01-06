@@ -16,7 +16,7 @@ impl OraiPriceOracle {
 
     pub fn new(deps: &DepsMut) -> StdResult<Self> {
         let config = Config::load(deps.storage)?;
-        let orai_contract = config.oraiswap_contract.orai_swap_router_contract;
+        let orai_swap_router_contract = config.oraiswap_contract.orai_swap_router_contract;
         let native_token = NativeToken::new("orai".to_string());
         let offer_asset_info = OfferAssetInfo::new(native_token);
         let usdt_contract_address = config.oraiswap_contract.usdt_contract;
@@ -35,7 +35,7 @@ impl OraiPriceOracle {
                 }],
             },
         };
-        let response: ExchangeRateResponse = deps.querier.query_wasm_smart(orai_contract, &msg)?;
+        let response: ExchangeRateResponse = deps.querier.query_wasm_smart(orai_swap_router_contract, &msg)?;
         let rate = response.data.amount;
         let orai_per_usd = (Decimal::raw(1000000u128) / Decimal::raw(rate))
             .to_uint_floor()

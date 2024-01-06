@@ -70,6 +70,7 @@ impl Config {
             admin,
             min_tier,
             validators: self.validators.clone(),
+            oraiswap_contract: self.oraiswap_contract.clone(),
             status: self.status.into(),
             usd_deposits: self
                 .usd_deposits

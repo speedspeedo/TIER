@@ -135,6 +135,7 @@ pub enum QueryResponse {
         status: ContractStatus,
         usd_deposits: Vec<Uint128>,
         min_tier: u8,
+        oraiswap_contract: OraiswapContract,
     },
     UserInfo {
         tier: u8,
