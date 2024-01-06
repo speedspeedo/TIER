@@ -58,8 +58,8 @@ impl BandProtocol {
         Ok(BandProtocol { orai_per_usd })
     }
 
-    pub fn usd_amount(&self, usei: u128) -> u128 {
-        usei.checked_mul(self.orai_per_usd)
+    pub fn usd_amount(&self, orai: u128) -> u128 {
+        orai.checked_mul(self.orai_per_usd)
             .and_then(|v| v.checked_div(BandProtocol::ONE_USD))
             .unwrap()
     }
