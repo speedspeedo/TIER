@@ -6,36 +6,22 @@ use serde::{Deserialize, Serialize};
 
 use crate::state::Config;
 
-pub struct BandProtocol {
+pub struct OraiPriceOracle {
     orai_per_usd: u128,
 }
 
-impl BandProtocol {
+impl OraiPriceOracle {
     pub const DECIMALS: u8 = 18;
     pub const ONE_USD: u128 = 1_000_000_000_000_000_000;
 
     pub fn new(deps: &DepsMut) -> StdResult<Self> {
-        // let querier: SeiQuerier<'_> = SeiQuerier::new(&deps.querier);
-        // let res = querier
-        //     .query_exchange_rates()
-        //     .unwrap_or(ExchangeRatesResponse {
-        //         denom_oracle_exchange_rate_pairs: vec![],
-        //     });
-
-        // let mut orai_per_usd = Self::ONE_USD / 2;
-        // for exratepair in res.denom_oracle_exchange_rate_pairs {
-        //     if exratepair.denom.clone() == "usei" {
-        //         let rate = exratepair.oracle_exchange_rate.exchange_rate;
-        //         orai_per_usd = (Decimal::raw(1000000u128) / rate).to_uint_floor().u128();
-        //     }
-        // }
         let config = Config::load(deps.storage)?;
-        let orai_contract = config.oraiswap_contract.orai_contract;
+        let orai_contract = config.oraiswap_contract.orai_swap_router_contract;
         let native_token = NativeToken::new("orai".to_string());
         let offer_asset_info = OfferAssetInfo::new(native_token);
         let usdt_contract_address = config.oraiswap_contract.usdt_contract;
         let msg = SwapContractMessage {
-            simulate_swap_operations: SwapCtrMessageContent {
+            simulate_swap_operations: SwapContractMessageContent {
                 offer_amount: 1000000,
                 operations: vec![Operation {
                     orai_swap: OraiSwap {
@@ -49,23 +35,22 @@ impl BandProtocol {
                 }],
             },
         };
-        let response: ChangeRateResponse = deps.querier.query_wasm_smart(orai_contract, &msg)?;
+        let response: ExchangeRateResponse = deps.querier.query_wasm_smart(orai_contract, &msg)?;
         let rate = response.data.amount;
-        // let rate = 8123456;
         let orai_per_usd = (Decimal::raw(1000000u128) / Decimal::raw(rate))
             .to_uint_floor()
             .u128();
-        Ok(BandProtocol { orai_per_usd })
+        Ok(OraiPriceOracle { orai_per_usd })
     }
 
     pub fn usd_amount(&self, orai: u128) -> u128 {
         orai.checked_mul(self.orai_per_usd)
-            .and_then(|v| v.checked_div(BandProtocol::ONE_USD))
+            .and_then(|v| v.checked_div(OraiPriceOracle::ONE_USD))
             .unwrap()
     }
 
     pub fn orai_amount(&self, usd: u128) -> u128 {
-        usd.checked_mul(BandProtocol::ONE_USD)
+        usd.checked_mul(OraiPriceOracle::ONE_USD)
             .and_then(|v: u128| v.checked_div(self.orai_per_usd))
             .unwrap()
     }
@@ -137,14 +122,14 @@ impl Clone for Operation {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct SwapCtrMessageContent {
+pub struct SwapContractMessageContent {
     pub offer_amount: u128,
     pub operations: Vec<Operation>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct SwapContractMessage {
-    pub simulate_swap_operations: SwapCtrMessageContent,
+    pub simulate_swap_operations: SwapContractMessageContent,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -155,6 +140,6 @@ pub struct Amount {
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct ChangeRateResponse {
+pub struct ExchangeRateResponse {
     pub data: Amount   
 }

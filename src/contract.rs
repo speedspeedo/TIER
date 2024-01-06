@@ -5,7 +5,7 @@ use cosmwasm_std::{to_json_binary, Binary, Deps, DepsMut, Env, MessageInfo, Resp
 use cosmwasm_std::StakingMsg;
 use cosmwasm_std::DistributionMsg;
 
-use crate::band::BandProtocol;
+use crate::band::OraiPriceOracle;
 // use crate::utils;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, ExecuteResponse, QueryResponse, InstantiateMsg, QueryMsg, ContractStatus, ResponseStatus, SerializedWithdrawals};
@@ -14,7 +14,6 @@ use crate::utils;
 use cosmwasm_std::StdError;
 
 
-pub const BLOCK_SIZE: usize = 256;
 pub const UNBOUND_LATENCY: u64 = 21 * 24 * 60 * 60;
 pub const ORAI: &str = "orai";
 
@@ -173,7 +172,7 @@ pub fn try_deposit(
 
     let mut orai_deposit = received_funds.amount.u128();
 
-    let band_protocol = BandProtocol::new(
+    let band_protocol = OraiPriceOracle::new(
         &deps
     )?;
 

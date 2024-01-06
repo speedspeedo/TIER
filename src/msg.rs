@@ -165,14 +165,14 @@ impl Clone for ValidatorWithWeight {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, JsonSchema)]
 pub struct OraiswapContract {
-    pub orai_contract: String,
+    pub orai_swap_router_contract: String,
     pub usdt_contract: String,
 }
 
 impl Clone for OraiswapContract {
     fn clone(&self) -> OraiswapContract {
         OraiswapContract {
-            orai_contract: self.orai_contract.clone(),
+            orai_swap_router_contract: self.orai_swap_router_contract.clone(),
             usdt_contract: self.usdt_contract.clone(),
         }
     }
