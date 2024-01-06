@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use crate::state::Config;
 
 pub struct OraiPriceOracle {
-    orai_per_usd: u128,
+    value: u128,
+    flag: bool,
 }
 
 impl OraiPriceOracle {
@@ -38,23 +39,47 @@ impl OraiPriceOracle {
         let response: ExchangeRateResponse = deps
             .querier
             .query_wasm_smart(orai_swap_router_contract, &msg)?;
-        let rate = response.amount;
-        let orai_per_usd = (Decimal::raw(1000000u128) / Decimal::raw(rate))
+        let exchange_rate = response.amount;
+        let mut flag = false;
+        let mut value = exchange_rate;
+        if exchange_rate < 1000000 {
+            flag = true;
+            value = (Decimal::raw(1000000u128) / Decimal::raw(exchange_rate))
             .to_uint_floor()
             .u128();
-        Ok(OraiPriceOracle { orai_per_usd })
+        } else {
+            value = (Decimal::raw(exchange_rate) / Decimal::raw(1000000u128))
+            .to_uint_floor()
+            .u128();
+        }
+        
+        Ok(OraiPriceOracle { value, flag })
     }
 
     pub fn usd_amount(&self, orai: u128) -> u128 {
-        orai.checked_mul(self.orai_per_usd)
+        if self.flag == true {
+            orai.checked_mul(self.value)
             .and_then(|v| v.checked_div(OraiPriceOracle::ONE_USD))
             .unwrap()
+        } else {
+            orai.checked_mul(OraiPriceOracle::ONE_USD)
+            .and_then(|v: u128| v.checked_div(self.value))
+            .unwrap()
+        }
+        
     }
 
     pub fn orai_amount(&self, usd: u128) -> u128 {
-        usd.checked_mul(OraiPriceOracle::ONE_USD)
-            .and_then(|v: u128| v.checked_div(self.orai_per_usd))
+        if self.flag == true {
+            usd.checked_mul(OraiPriceOracle::ONE_USD)
+            .and_then(|v: u128| v.checked_div(self.value))
             .unwrap()
+        } else {
+            usd.checked_mul(self.value)
+            .and_then(|v| v.checked_div(OraiPriceOracle::ONE_USD))
+            .unwrap()
+        }
+        
     }
 }
 
