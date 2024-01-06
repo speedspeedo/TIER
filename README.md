@@ -36,7 +36,7 @@ oraid tx wasm instantiate "$TIER_CODE_ID"                                  \
     --label "$TIER_LABEL"                            \
     --home $ORAI_HOME_DIR -y
 
-TIER_CONTRACT=orai15v8jqq6aqhsuykdgdevx3qqcj9lp4h27ypsycds4cmv6er9qv0vsv385ck
+TIER_CONTRACT=orai186ucx5mtdq6ams8rsvvcu7yfw5lhtxue8ykdkyqvlnk3gpc77laslshvkj
 
 oraid q wasm contract-state smart "$TIER_CONTRACT" '{ "config": {}}' --home $ORAI_HOME_DIR
 

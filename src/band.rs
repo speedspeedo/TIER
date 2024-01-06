@@ -1,4 +1,4 @@
-use cosmwasm_std::{Decimal, StdResult};
+use cosmwasm_std::StdResult;
 
 use cosmwasm_std::DepsMut;
 use schemars::JsonSchema;
@@ -39,16 +39,6 @@ impl OraiPriceOracle {
             .querier
             .query_wasm_smart(orai_swap_router_contract, &msg)?;
         let exchange_rate = response.amount;
-        // if exchange_rate < 1000000 {
-        //     flag = true;
-        //     value = (Decimal::raw(1000000u128) / Decimal::raw(exchange_rate))
-        //     .to_uint_floor()
-        //     .u128();
-        // } else {
-        //     value = (Decimal::raw(exchange_rate) / Decimal::raw(1000000u128))
-        //     .to_uint_floor()
-        //     .u128();
-        // }
         
         Ok(OraiPriceOracle { exchange_rate })
     }
