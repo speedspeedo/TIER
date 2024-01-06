@@ -7,13 +7,12 @@ use serde::{Deserialize, Serialize};
 use crate::state::Config;
 
 pub struct OraiPriceOracle {
-    value: u128,
-    flag: bool,
+    exchange_rate: u128
 }
 
 impl OraiPriceOracle {
-    pub const DECIMALS: u8 = 18;
-    pub const ONE_USD: u128 = 1_000_000_000_000_000_000;
+    pub const ZERO_12: u128 = 1_000_000_000_000;
+    pub const ZERO_6: u128 = 1_000_000;
 
     pub fn new(deps: &DepsMut) -> StdResult<Self> {
         let config = Config::load(deps.storage)?;
@@ -40,46 +39,30 @@ impl OraiPriceOracle {
             .querier
             .query_wasm_smart(orai_swap_router_contract, &msg)?;
         let exchange_rate = response.amount;
-        let mut flag = false;
-        let mut value = exchange_rate;
-        if exchange_rate < 1000000 {
-            flag = true;
-            value = (Decimal::raw(1000000u128) / Decimal::raw(exchange_rate))
-            .to_uint_floor()
-            .u128();
-        } else {
-            value = (Decimal::raw(exchange_rate) / Decimal::raw(1000000u128))
-            .to_uint_floor()
-            .u128();
-        }
+        // if exchange_rate < 1000000 {
+        //     flag = true;
+        //     value = (Decimal::raw(1000000u128) / Decimal::raw(exchange_rate))
+        //     .to_uint_floor()
+        //     .u128();
+        // } else {
+        //     value = (Decimal::raw(exchange_rate) / Decimal::raw(1000000u128))
+        //     .to_uint_floor()
+        //     .u128();
+        // }
         
-        Ok(OraiPriceOracle { value, flag })
+        Ok(OraiPriceOracle { exchange_rate })
     }
 
     pub fn usd_amount(&self, orai: u128) -> u128 {
-        if self.flag == true {
-            orai.checked_mul(self.value)
-            .and_then(|v| v.checked_div(OraiPriceOracle::ONE_USD))
-            .unwrap()
-        } else {
-            orai.checked_mul(OraiPriceOracle::ONE_USD)
-            .and_then(|v: u128| v.checked_div(self.value))
-            .unwrap()
-        }
-        
+        orai.checked_mul(self.exchange_rate)
+        .and_then(|v| v.checked_div(OraiPriceOracle::ZERO_12))
+        .unwrap()
     }
 
     pub fn orai_amount(&self, usd: u128) -> u128 {
-        if self.flag == true {
-            usd.checked_mul(OraiPriceOracle::ONE_USD)
-            .and_then(|v: u128| v.checked_div(self.value))
-            .unwrap()
-        } else {
-            usd.checked_mul(self.value)
-            .and_then(|v| v.checked_div(OraiPriceOracle::ONE_USD))
-            .unwrap()
-        }
-        
+        usd.checked_mul(OraiPriceOracle::ZERO_6)
+        .and_then(|v: u128| v.checked_div(self.exchange_rate))
+        .unwrap()
     }
 }
 
