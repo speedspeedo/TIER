@@ -35,8 +35,10 @@ impl OraiPriceOracle {
                 }],
             },
         };
-        let response: ExchangeRateResponse = deps.querier.query_wasm_smart(orai_swap_router_contract, &msg)?;
-        let rate = response.data.amount;
+        let response: ExchangeRateResponse = deps
+            .querier
+            .query_wasm_smart(orai_swap_router_contract, &msg)?;
+        let rate = response.amount;
         let orai_per_usd = (Decimal::raw(1000000u128) / Decimal::raw(rate))
             .to_uint_floor()
             .u128();
@@ -135,11 +137,11 @@ pub struct SwapContractMessage {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Amount {
-    amount: u128
+    amount: u128,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct ExchangeRateResponse {
-    pub data: Amount   
+    pub amount: u128,
 }
