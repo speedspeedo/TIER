@@ -43,32 +43,25 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     ChangeAdmin {
         admin: String,
-        padding: Option<String>,
     },
     ChangeStatus {
         status: ContractStatus,
-        padding: Option<String>,
     },
     Deposit {
-        padding: Option<String>,
     },
     Withdraw {
-        padding: Option<String>,
     },
     Claim {
         recipient: Option<String>,
         start: Option<u32>,
         limit: Option<u32>,
-        padding: Option<String>,
     },
     WithdrawRewards {
         recipient: Option<String>,
-        padding: Option<String>,
     },
     Redelegate {
         validator_address: String,
         recipient: Option<String>,
-        padding: Option<String>,
     },
 }
 
