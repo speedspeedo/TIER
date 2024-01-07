@@ -47,10 +47,8 @@ pub enum ExecuteMsg {
     ChangeStatus {
         status: ContractStatus,
     },
-    Deposit {
-    },
-    Withdraw {
-    },
+    Deposit {},
+    Withdraw {},
     Claim {
         recipient: Option<String>,
         start: Option<u32>,
@@ -171,4 +169,3 @@ impl Clone for OraiswapContract {
         }
     }
 }
-

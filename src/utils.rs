@@ -1,11 +1,6 @@
-
 use crate::contract::ORAI;
-use cosmwasm_std::{
-     Coin,  Env, FullDelegation, StdResult, DepsMut, Addr,
-};
+use cosmwasm_std::{Addr, Coin, DepsMut, Env, FullDelegation, StdResult};
 use serde::Deserialize;
-
-
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -45,7 +40,9 @@ pub fn query_delegation(
     env: &Env,
     validator: &String,
 ) -> StdResult<Option<FullDelegation>> {
-    let delegation = deps.querier.query_delegation(&env.contract.address, validator)?;
+    let delegation = deps
+        .querier
+        .query_delegation(&env.contract.address, validator)?;
 
     Ok(delegation)
 }

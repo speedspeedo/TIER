@@ -1,12 +1,12 @@
-use crate::msg::{ContractStatus, QueryResponse, SerializedWithdrawals, OraiswapContract, ValidatorWithWeight};
-use cosmwasm_std::{
-      StdError, StdResult, Storage, Uint128,
+use crate::msg::{
+    ContractStatus, OraiswapContract, QueryResponse, SerializedWithdrawals, ValidatorWithWeight,
 };
-use cw_storage_plus::{ Item, Map};
+use cosmwasm_std::{StdError, StdResult, Storage, Uint128};
+use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
 pub const CONFIG_ITEM: Item<Config> = Item::new("config");
-pub const WITHDRAWALS_LIST: Map<String, Vec<UserWithdrawal>> = Map::new("withdraw");//Deque<UserWithdrawal> = Deque::new("withdraw");
+pub const WITHDRAWALS_LIST: Map<String, Vec<UserWithdrawal>> = Map::new("withdraw"); //Deque<UserWithdrawal> = Deque::new("withdraw");
 pub const USER_INFOS: Map<String, UserInfo> = Map::new("user_info");
 
 // pub fn withdrawals_list(address: &CanonicalAddr) -> Deque<'static, UserWithdrawal> {
@@ -16,7 +16,7 @@ pub const USER_INFOS: Map<String, UserInfo> = Map::new("user_info");
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Config {
     pub admin: String,
-    pub validators: Vec<ValidatorWithWeight>, 
+    pub validators: Vec<ValidatorWithWeight>,
     pub status: u8,
     pub usd_deposits: Vec<u128>,
     pub oraiswap_contract: OraiswapContract,
@@ -63,7 +63,7 @@ impl Config {
     }
 
     pub fn to_answer(&self) -> StdResult<QueryResponse> {
-        let admin = self.admin.clone();//api.addr_humanize(&self.admin)?;
+        let admin = self.admin.clone(); //api.addr_humanize(&self.admin)?;
         let min_tier = self.usd_deposits.len().checked_add(1).unwrap() as u8;
 
         return Ok(QueryResponse::Config {

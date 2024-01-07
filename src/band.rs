@@ -1,13 +1,11 @@
-use cosmwasm_std::StdResult;
-
+use crate::state::Config;
 use cosmwasm_std::DepsMut;
+use cosmwasm_std::StdResult;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::state::Config;
-
 pub struct OraiPriceOracle {
-    exchange_rate: u128
+    exchange_rate: u128,
 }
 
 impl OraiPriceOracle {
@@ -39,21 +37,21 @@ impl OraiPriceOracle {
             .querier
             .query_wasm_smart(orai_swap_router_contract, &msg)?;
         let exchange_rate = response.amount;
-        
+
         Ok(OraiPriceOracle { exchange_rate })
     }
 
     pub fn usd_amount(&self, orai: u128) -> u128 {
         orai.checked_mul(self.exchange_rate)
-        .and_then(|v| v.checked_div(OraiPriceOracle::ZERO_12))
-        .unwrap()
+            .and_then(|v| v.checked_div(OraiPriceOracle::ZERO_12))
+            .unwrap()
     }
 
     pub fn orai_amount(&self, usd: u128) -> u128 {
         usd.checked_mul(OraiPriceOracle::ZERO_12)
-        .and_then(|v: u128| v.checked_div(self.exchange_rate))
-        .and_then(|v: u128| v.checked_add(1))
-        .unwrap()
+            .and_then(|v: u128| v.checked_div(self.exchange_rate))
+            .and_then(|v: u128| v.checked_add(1))
+            .unwrap()
     }
 }
 
