@@ -224,7 +224,7 @@ pub fn try_deposit(
     let new_tier_deposit = config.deposit_by_tier(new_tier);
 
     // let usd_refund = new_usd_deposit.checked_sub(new_tier_deposit).unwrap();
-    let orai_refund = orai_deposit.checked_sub(orai_price_ocracle.orai_amount(new_tier_deposit)).unwrap();
+    let orai_refund = orai_deposit.checked_sub(orai_price_ocracle.orai_amount(new_tier_deposit - old_usd_deposit)).unwrap();
 
 
 
