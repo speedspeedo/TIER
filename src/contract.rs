@@ -424,30 +424,39 @@ pub fn try_withdraw_rewards(
         return Err(ContractError::Std(StdError::generic_err("Unauthorized")));
     }
 
-    let temp_validator = &config.validators[0];
-    let validator = temp_validator.clone().address;
-    let delegation = utils::query_delegation(&deps, &env, &validator);
-
-    let can_withdraw = delegation
-        .map(|d| d.unwrap().accumulated_rewards[0].amount.u128())
-        .unwrap_or(0);
-
-    if can_withdraw == 0 {
-        return Err(ContractError::Std(StdError::generic_err(
-            "There is nothing to withdraw",
-        )));
-    }
-
     let admin = config.admin;
     let recipient = recipient.unwrap_or(admin);
     let mut msgs: Vec<CosmosMsg> = Vec::new();
     let set_withdraw_addr_msg = DistributionMsg::SetWithdrawAddress { address: recipient };
     msgs.push(CosmosMsg::Distribution(set_withdraw_addr_msg));
-    let withdraw_msg = DistributionMsg::WithdrawDelegatorReward { validator };
 
-    msgs.push(CosmosMsg::Distribution(withdraw_msg));
+    let mut total_withdraw_amount: u128 = 0;
+
+    let validators = &config.validators;
+    for validator_it in validators {
+        let validator = validator_it.clone().address;
+        let delegation = utils::query_delegation(&deps, &env, &validator);
+    
+        let can_withdraw = delegation
+            .map(|d| d.unwrap().accumulated_rewards[0].amount.u128())
+            .unwrap_or(0);
+    
+        if can_withdraw == 0 {
+            return Err(ContractError::Std(StdError::generic_err(
+                "There is nothing to withdraw",
+            )));
+        }
+        
+        let withdraw_msg = DistributionMsg::WithdrawDelegatorReward { validator };
+    
+        msgs.push(CosmosMsg::Distribution(withdraw_msg));
+
+        total_withdraw_amount += can_withdraw;
+        
+    }
+    
     let answer = to_json_binary(&ExecuteResponse::WithdrawRewards {
-        amount: Uint128::new(can_withdraw),
+        amount: Uint128::new(total_withdraw_amount),
         status: ResponseStatus::Success,
     })?;
 
