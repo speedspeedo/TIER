@@ -170,7 +170,7 @@ pub fn try_deposit(
 
     let received_funds = get_received_funds(&deps, &info)?;
 
-    let mut orai_deposit = received_funds.amount.u128();
+    let orai_deposit = received_funds.amount.u128();
 
     let orai_price_ocracle = OraiPriceOracle::new(
         &deps
