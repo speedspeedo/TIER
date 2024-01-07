@@ -440,12 +440,6 @@ pub fn try_withdraw_rewards(
         let can_withdraw = delegation
             .map(|d| d.unwrap().accumulated_rewards[0].amount.u128())
             .unwrap_or(0);
-    
-        if can_withdraw == 0 {
-            return Err(ContractError::Std(StdError::generic_err(
-                "There is nothing to withdraw",
-            )));
-        }
         
         let withdraw_msg = DistributionMsg::WithdrawDelegatorReward { validator };
     
@@ -453,6 +447,12 @@ pub fn try_withdraw_rewards(
 
         total_withdraw_amount += can_withdraw;
         
+    }
+
+    if total_withdraw_amount == 0 {
+        return Err(ContractError::Std(StdError::generic_err(
+            "There is nothing to withdraw from validators",
+        )));
     }
     
     let answer = to_json_binary(&ExecuteResponse::WithdrawRewards {
