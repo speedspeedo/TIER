@@ -172,7 +172,7 @@ pub fn try_deposit(
 
     let mut orai_deposit = received_funds.amount.u128();
 
-    let band_protocol = OraiPriceOracle::new(
+    let orai_price_ocracle = OraiPriceOracle::new(
         &deps
     )?;
 
@@ -180,7 +180,7 @@ pub fn try_deposit(
     //     return Err(ContractError::Std(StdError::generic_err(format!("Reached max tier {}", orai_deposit))));
     // }
 
-    let usd_deposit = band_protocol.usd_amount(orai_deposit);
+    let usd_deposit: u128 = orai_price_ocracle.usd_amount(orai_deposit);
 
     // if usd_deposit > 0 {
     //     return Err(ContractError::Std(StdError::generic_err(format!("Reached max tier {}", usd_deposit))));
@@ -207,10 +207,10 @@ pub fn try_deposit(
         }
 
         let next_tier = current_tier.checked_sub(1).unwrap();
-        let next_tier_deposit = config.deposit_by_tier(next_tier);
+        let next_tier_deposit: u128 = config.deposit_by_tier(next_tier);
 
         let expected_deposit_usd = next_tier_deposit.checked_sub(old_usd_deposit).unwrap();
-        let expected_deposit_scrt = band_protocol.orai_amount(expected_deposit_usd);
+        let expected_deposit_scrt = orai_price_ocracle.orai_amount(expected_deposit_usd);
 
         let err_msg = format!(
             "You should deposit at least {} USD ({} ORAI)",
@@ -223,11 +223,13 @@ pub fn try_deposit(
     let mut messages:Vec<SubMsg> = Vec::with_capacity(2);
     let new_tier_deposit = config.deposit_by_tier(new_tier);
 
-    let usd_refund = new_usd_deposit.checked_sub(new_tier_deposit).unwrap();
-    let orai_refund = band_protocol.orai_amount(usd_refund);
+    // let usd_refund = new_usd_deposit.checked_sub(new_tier_deposit).unwrap();
+    let orai_refund = orai_deposit.checked_sub(orai_price_ocracle.orai_amount(new_tier_deposit)).unwrap();
+
+
 
     if orai_refund != 0 {
-        orai_deposit = orai_deposit.checked_sub(orai_refund).unwrap();
+        // orai_deposit = orai_deposit.checked_sub(orai_refund).unwrap();
 
         let send_msg = BankMsg::Send {
             to_address: info.sender.to_string(),
@@ -241,7 +243,8 @@ pub fn try_deposit(
     user_info.tier = new_tier;
     user_info.timestamp = env.block.time.seconds();
     user_info.usd_deposit = new_tier_deposit;
-    user_info.orai_deposit = user_info.orai_deposit.checked_add(orai_deposit).unwrap();
+    // user_info.orai_deposit = user_info.orai_deposit.checked_add(orai_deposit).unwrap();
+    user_info.orai_deposit = orai_price_ocracle.orai_amount(user_info.usd_deposit);
     USER_INFOS.save(deps.storage, info.sender.to_string(), &user_info)?;
 
     let validators = config.validators;

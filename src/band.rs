@@ -50,7 +50,7 @@ impl OraiPriceOracle {
     }
 
     pub fn orai_amount(&self, usd: u128) -> u128 {
-        usd.checked_mul(OraiPriceOracle::ZERO_6)
+        usd.checked_mul(OraiPriceOracle::ZERO_12)
         .and_then(|v: u128| v.checked_div(self.exchange_rate))
         .unwrap()
     }
