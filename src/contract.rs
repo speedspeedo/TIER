@@ -19,7 +19,7 @@ use crate::state::{self, Config, UserWithdrawal, CONFIG_ITEM, USER_INFOS, WITHDR
 use crate::utils;
 use cosmwasm_std::StdError;
 
-pub const UNBOUND_LATENCY: u64 = 21 * 24 * 60 * 60;
+pub const UNBOUND_TIME: u64 = 21 * 24 * 60 * 60;
 pub const ORAI: &str = "orai";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -300,7 +300,7 @@ pub fn try_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respon
     USER_INFOS.remove(deps.storage, info.sender.to_string());
 
     let current_time = env.block.time.seconds();
-    let claim_time = current_time.checked_add(UNBOUND_LATENCY).unwrap();
+    let claim_time = current_time.checked_add(UNBOUND_TIME).unwrap();
     let withdrawal = UserWithdrawal {
         amount,
         timestamp: current_time,
