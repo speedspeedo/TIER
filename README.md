@@ -23,7 +23,7 @@ RES=$(oraid tx wasm instantiate "$TIER_CODE_ID" \
  "usdt_contract": "orai1sthrn5ep8ls5vzz8f9gp89khhmedahhdqd244dh9uqzk3hx2pzrsrpzcas",  
  "orai_swap_router_contract": "orai1vhndln95yd7rngslzvf6sax6axcshkxqpmpr886ntelh28p9ghuqawp9hn"
 },
-"deposits": ["100", "50", "10", "1"],
+"deposits": ["25000", "7500", "1500", "250"],
 "admin":"'"${WALLET_ADDRESS}"'"
     }'                                               \
     --gas auto                                    \

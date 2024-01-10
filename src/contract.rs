@@ -1,8 +1,21 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, coins, to_json_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdResult, SubMsg, Uint128,
+    coin,
+    coins,
+    to_json_binary,
+    BankMsg,
+    Binary,
+    Coin,
+    CosmosMsg,
+    Deps,
+    DepsMut,
+    Env,
+    MessageInfo,
+    Response,
+    StdResult,
+    SubMsg,
+    Uint128,
 };
 
 use cosmwasm_std::DistributionMsg;
@@ -12,10 +25,16 @@ use crate::band::OraiPriceOracle;
 // use crate::utils;
 use crate::error::ContractError;
 use crate::msg::{
-    ContractStatus, ExecuteMsg, ExecuteResponse, InstantiateMsg, QueryMsg, QueryResponse,
-    ResponseStatus, SerializedWithdrawals,
+    ContractStatus,
+    ExecuteMsg,
+    ExecuteResponse,
+    InstantiateMsg,
+    QueryMsg,
+    QueryResponse,
+    ResponseStatus,
+    SerializedWithdrawals,
 };
-use crate::state::{self, Config, UserWithdrawal, CONFIG_ITEM, USER_INFOS, WITHDRAWALS_LIST};
+use crate::state::{ self, Config, UserWithdrawal, CONFIG_ITEM, USER_INFOS, WITHDRAWALS_LIST };
 use crate::utils;
 use cosmwasm_std::StdError;
 
@@ -27,21 +46,25 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    msg: InstantiateMsg,
+    msg: InstantiateMsg
 ) -> Result<Response, ContractError> {
-    let deposits = msg.deposits.iter().map(|v| v.u128()).collect::<Vec<_>>();
+    let deposits = msg.deposits
+        .iter()
+        .map(|v| v.u128())
+        .collect::<Vec<_>>();
 
     if deposits.is_empty() {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Deposits array is empty",
-        )));
+        return Err(ContractError::Std(StdError::generic_err("Deposits array is empty")));
     }
 
-    let is_sorted = deposits.as_slice().windows(2).all(|v| v[0] > v[1]);
+    let is_sorted = deposits
+        .as_slice()
+        .windows(2)
+        .all(|v| v[0] > v[1]);
     if !is_sorted {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Specify deposits in decreasing order",
-        )));
+        return Err(
+            ContractError::Std(StdError::generic_err("Specify deposits in decreasing order"))
+        );
     }
 
     let admin = msg.admin.unwrap_or("".to_string());
@@ -64,27 +87,20 @@ pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg,
+    msg: ExecuteMsg
 ) -> Result<Response, ContractError> {
     let response = match msg {
         ExecuteMsg::ChangeAdmin { admin, .. } => try_change_admin(deps, env, info, admin),
         ExecuteMsg::ChangeStatus { status, .. } => try_change_status(deps, env, info, status),
         ExecuteMsg::Deposit { .. } => try_deposit(deps, env, info),
         ExecuteMsg::Withdraw { .. } => try_withdraw(deps, env, info),
-        ExecuteMsg::Claim {
-            recipient,
-            start,
-            limit,
-            ..
-        } => try_claim(deps, env, info, recipient, start, limit),
+        ExecuteMsg::Claim { recipient, start, limit, .. } =>
+            try_claim(deps, env, info, recipient, start, limit),
         ExecuteMsg::WithdrawRewards { recipient, .. } => {
             try_withdraw_rewards(deps, env, info, recipient)
         }
-        ExecuteMsg::Redelegate {
-            validator_address,
-            recipient,
-            ..
-        } => try_redelegate(deps, env, info, validator_address, recipient),
+        ExecuteMsg::Redelegate { validator_address, recipient, .. } =>
+            try_redelegate(deps, env, info, validator_address, recipient),
     };
 
     return response;
@@ -95,11 +111,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
         QueryMsg::UserInfo { address } => to_json_binary(&query_user_info(deps, address)?),
-        QueryMsg::Withdrawals {
-            address,
-            start,
-            limit,
-        } => to_json_binary(&query_withdrawals(deps, address, start, limit)?),
+        QueryMsg::Withdrawals { address, start, limit } =>
+            to_json_binary(&query_withdrawals(deps, address, start, limit)?),
     }
 }
 
@@ -107,17 +120,20 @@ pub fn try_change_admin(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    new_admin: String,
+    new_admin: String
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG_ITEM.load(deps.storage)?;
     if info.sender.clone() != config.admin {
         return Err(ContractError::Std(StdError::generic_err("Unauthorized")));
     }
 
-    CONFIG_ITEM.update(deps.storage, |mut exists| -> StdResult<_> {
-        exists.admin = new_admin;
-        Ok(exists)
-    })?;
+    CONFIG_ITEM.update(
+        deps.storage,
+        |mut exists| -> StdResult<_> {
+            exists.admin = new_admin;
+            Ok(exists)
+        }
+    )?;
 
     Ok(Response::new().add_attribute("action", "changed admin"))
 }
@@ -126,44 +142,43 @@ pub fn try_change_status(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    status: ContractStatus,
+    status: ContractStatus
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG_ITEM.load(deps.storage)?;
     if info.sender.clone() != config.admin {
         return Err(ContractError::Std(StdError::generic_err("Unauthorized")));
     }
 
-    CONFIG_ITEM.update(deps.storage, |mut exists| -> StdResult<_> {
-        exists.status = status as u8;
-        Ok(exists)
-    })?;
+    CONFIG_ITEM.update(
+        deps.storage,
+        |mut exists| -> StdResult<_> {
+            exists.status = status as u8;
+            Ok(exists)
+        }
+    )?;
     Ok(Response::new().add_attribute("action", "changed status"))
 }
 
 pub fn get_received_funds(_deps: &DepsMut, info: &MessageInfo) -> Result<Coin, ContractError> {
     match info.funds.get(0) {
-        None => return Err(ContractError::Std(StdError::generic_err("No Funds"))),
+        None => {
+            return Err(ContractError::Std(StdError::generic_err("No Funds")));
+        }
         Some(received) => {
             /* Amount of tokens received cannot be zero */
             if received.amount.is_zero() {
-                return Err(ContractError::Std(StdError::generic_err(
-                    "Not Allow Zero Amount",
-                )));
+                return Err(ContractError::Std(StdError::generic_err("Not Allow Zero Amount")));
             }
 
             /* Allow to receive only token denomination defined
             on contract instantiation "config.stable_denom" */
             if received.denom.clone() != "orai" {
-                return Err(ContractError::Std(StdError::generic_err(
-                    "Unsopported token",
-                )));
+                return Err(ContractError::Std(StdError::generic_err("Unsopported token")));
             }
 
             /* Only one token can be received */
             if info.funds.len() > 1 {
-                return Err(ContractError::Std(StdError::generic_err(
-                    "Not Allowed Multiple Funds",
-                )));
+                return Err(ContractError::Std(StdError::generic_err("Not Allowed Multiple Funds")));
             }
             Ok(received.clone())
         }
@@ -180,25 +195,15 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
 
     let orai_price_ocracle = OraiPriceOracle::new(&deps)?;
 
-    // if orai_deposit > 0 {
-    //     return Err(ContractError::Std(StdError::generic_err(format!("Reached max tier {}", orai_deposit))));
-    // }
-
     let usd_deposit: u128 = orai_price_ocracle.usd_amount(orai_deposit);
-
-    // if usd_deposit > 0 {
-    //     return Err(ContractError::Std(StdError::generic_err(format!("Reached max tier {}", usd_deposit))));
-    // }
 
     let sender = info.sender.to_string();
     let min_tier = config.min_tier();
 
-    let mut user_info = USER_INFOS
-        .may_load(deps.storage, sender)?
-        .unwrap_or(state::UserInfo {
-            tier: min_tier,
-            ..Default::default()
-        });
+    let mut user_info = USER_INFOS.may_load(deps.storage, sender)?.unwrap_or(state::UserInfo {
+        tier: min_tier,
+        ..Default::default()
+    });
     let current_tier = user_info.tier;
     let old_usd_deposit = user_info.usd_deposit;
     let new_usd_deposit = old_usd_deposit.checked_add(usd_deposit).unwrap();
@@ -207,9 +212,7 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
 
     if current_tier == new_tier {
         if current_tier == config.max_tier() {
-            return Err(ContractError::Std(StdError::generic_err(
-                "Reached max tier",
-            )));
+            return Err(ContractError::Std(StdError::generic_err("Reached max tier")));
         }
 
         let next_tier = current_tier.checked_sub(1).unwrap();
@@ -220,7 +223,8 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
 
         let err_msg = format!(
             "You should deposit at least {} USD ({} ORAI)",
-            expected_deposit_usd, expected_deposit_scrt
+            expected_deposit_usd,
+            expected_deposit_scrt
         );
 
         return Err(ContractError::Std(StdError::generic_err(&err_msg)));
@@ -256,12 +260,9 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
     let validators = config.validators;
 
     for validator in validators {
-        let individual_amount = user_info
-            .orai_deposit
-            .checked_sub(old_orai_deposit)
-            .unwrap()
-            * validator.weight
-            / 100;
+        let individual_amount =
+            (user_info.orai_deposit.checked_sub(old_orai_deposit).unwrap() * validator.weight) /
+            100;
         let delegate_msg = StakingMsg::Delegate {
             validator: validator.address,
             amount: coin(individual_amount, ORAI),
@@ -271,12 +272,14 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
         messages.push(SubMsg::new(msg));
     }
 
-    let answer = to_json_binary(&ExecuteResponse::Deposit {
-        usd_deposit: Uint128::new(user_info.usd_deposit),
-        orai_deposit: Uint128::new(user_info.orai_deposit),
-        tier: new_tier,
-        status: ResponseStatus::Success,
-    })?;
+    let answer = to_json_binary(
+        &(ExecuteResponse::Deposit {
+            usd_deposit: Uint128::new(user_info.usd_deposit),
+            orai_deposit: Uint128::new(user_info.orai_deposit),
+            tier: new_tier,
+            status: ResponseStatus::Success,
+        })
+    )?;
 
     Ok(Response::new().add_submessages(messages).set_data(answer))
 }
@@ -288,12 +291,10 @@ pub fn try_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respon
     let sender = info.sender.to_string();
 
     let min_tier = config.min_tier();
-    let user_info = USER_INFOS
-        .may_load(deps.storage, sender)?
-        .unwrap_or(state::UserInfo {
-            tier: min_tier,
-            ..Default::default()
-        });
+    let user_info = USER_INFOS.may_load(deps.storage, sender)?.unwrap_or(state::UserInfo {
+        tier: min_tier,
+        ..Default::default()
+    });
 
     let amount = user_info.orai_deposit;
 
@@ -307,9 +308,10 @@ pub fn try_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respon
         claim_time,
     };
 
-    let mut withdrawals = WITHDRAWALS_LIST
-        .may_load(deps.storage, info.sender.to_string())?
-        .unwrap_or_default();
+    let mut withdrawals = WITHDRAWALS_LIST.may_load(
+        deps.storage,
+        info.sender.to_string()
+    )?.unwrap_or_default();
 
     withdrawals.push(withdrawal);
     WITHDRAWALS_LIST.save(deps.storage, info.sender.to_string(), &withdrawals)?;
@@ -323,9 +325,7 @@ pub fn try_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respon
         let weight_as_uint128 = Uint128::from(validator.weight);
 
         // Perform the multiplication - Uint128 * Uint128
-        let multiplied = amount
-            .amount
-            .multiply_ratio(weight_as_uint128, Uint128::from(100_u128));
+        let multiplied = amount.amount.multiply_ratio(weight_as_uint128, Uint128::from(100_u128));
 
         // Now, `multiplied` is Uint128, but we want the result as u128
         let individual_amount: u128 = multiplied.u128();
@@ -338,9 +338,11 @@ pub fn try_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respon
         messages.push(SubMsg::new(msg));
     }
 
-    let answer = to_json_binary(&ExecuteResponse::Withdraw {
-        status: ResponseStatus::Success,
-    })?;
+    let answer = to_json_binary(
+        &(ExecuteResponse::Withdraw {
+            status: ResponseStatus::Success,
+        })
+    )?;
 
     Ok(Response::new().add_submessages(messages).set_data(answer))
 }
@@ -351,29 +353,26 @@ pub fn try_claim(
     info: MessageInfo,
     recipient: Option<String>,
     start: Option<u32>,
-    limit: Option<u32>,
+    limit: Option<u32>
 ) -> Result<Response, ContractError> {
     let config = CONFIG_ITEM.load(deps.storage)?;
     config.assert_contract_active()?;
 
     let sender = info.sender.to_string();
-    let mut withdrawals = WITHDRAWALS_LIST
-        .may_load(deps.storage, sender)?
-        .unwrap_or_default();
+    let mut withdrawals = WITHDRAWALS_LIST.may_load(deps.storage, sender)?.unwrap_or_default();
 
     let length = withdrawals.len();
 
     if length == 0 {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Nothing to claim",
-        )));
+        return Err(ContractError::Std(StdError::generic_err("Nothing to claim")));
     }
 
     let recipient = recipient.unwrap_or(info.sender.to_string());
     let start: usize = start.unwrap_or(0) as usize;
     let limit = limit.unwrap_or(50) as usize;
-    let withdrawals_iter: std::iter::Take<std::iter::Skip<std::slice::Iter<'_, UserWithdrawal>>> =
-        withdrawals.iter().skip(start).take(limit);
+    let withdrawals_iter: std::iter::Take<
+        std::iter::Skip<std::slice::Iter<'_, UserWithdrawal>>
+    > = withdrawals.iter().skip(start).take(limit);
 
     let current_time = env.block.time.seconds();
     let mut remove_indices = Vec::new();
@@ -389,9 +388,7 @@ pub fn try_claim(
     }
 
     if claim_amount == 0 {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Nothing to claim",
-        )));
+        return Err(ContractError::Std(StdError::generic_err("Nothing to claim")));
     }
 
     for (shift, index) in remove_indices.into_iter().enumerate() {
@@ -405,10 +402,12 @@ pub fn try_claim(
     };
 
     let msg = CosmosMsg::Bank(send_msg);
-    let answer = to_json_binary(&ExecuteResponse::Claim {
-        amount: claim_amount.into(),
-        status: ResponseStatus::Success,
-    })?;
+    let answer = to_json_binary(
+        &(ExecuteResponse::Claim {
+            amount: claim_amount.into(),
+            status: ResponseStatus::Success,
+        })
+    )?;
 
     Ok(Response::new().add_message(msg).set_data(answer))
 }
@@ -417,7 +416,7 @@ pub fn try_withdraw_rewards(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    recipient: Option<String>,
+    recipient: Option<String>
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG_ITEM.load(deps.storage)?;
     if info.sender.clone() != config.admin {
@@ -436,29 +435,32 @@ pub fn try_withdraw_rewards(
     for validator_it in validators {
         let validator = validator_it.clone().address;
         let delegation = utils::query_delegation(&deps, &env, &validator);
-    
+
         let can_withdraw = delegation
             .map(|d| d.unwrap().accumulated_rewards[0].amount.u128())
             .unwrap_or(0);
-        
+
         let withdraw_msg = DistributionMsg::WithdrawDelegatorReward { validator };
-    
+
         msgs.push(CosmosMsg::Distribution(withdraw_msg));
 
         total_withdraw_amount += can_withdraw;
-        
     }
 
     if total_withdraw_amount == 0 {
-        return Err(ContractError::Std(StdError::generic_err(
-            "There is nothing to withdraw from validators",
-        )));
+        return Err(
+            ContractError::Std(
+                StdError::generic_err("There is nothing to withdraw from validators")
+            )
+        );
     }
-    
-    let answer = to_json_binary(&ExecuteResponse::WithdrawRewards {
-        amount: Uint128::new(total_withdraw_amount),
-        status: ResponseStatus::Success,
-    })?;
+
+    let answer = to_json_binary(
+        &(ExecuteResponse::WithdrawRewards {
+            amount: Uint128::new(total_withdraw_amount),
+            status: ResponseStatus::Success,
+        })
+    )?;
 
     Ok(Response::new().add_messages(msgs).set_data(answer))
 }
@@ -468,7 +470,7 @@ pub fn try_redelegate(
     env: Env,
     info: MessageInfo,
     validator_address: String,
-    recipient: Option<String>,
+    recipient: Option<String>
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG_ITEM.load(deps.storage)?;
     if info.sender.clone() != config.admin {
@@ -480,19 +482,19 @@ pub fn try_redelegate(
     let delegation = utils::query_delegation(&deps, &env, &old_validator);
 
     if old_validator == validator_address {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Redelegation to the same validator",
-        )));
+        return Err(ContractError::Std(StdError::generic_err("Redelegation to the same validator")));
     }
 
     if delegation.is_err() {
         config.validators[0].address = validator_address;
         CONFIG_ITEM.save(deps.storage, &config)?;
 
-        let answer = to_json_binary(&ExecuteResponse::Redelegate {
-            amount: Uint128::zero(),
-            status: ResponseStatus::Success,
-        })?;
+        let answer = to_json_binary(
+            &(ExecuteResponse::Redelegate {
+                amount: Uint128::zero(),
+                status: ResponseStatus::Success,
+            })
+        )?;
 
         return Ok(Response::new().set_data(answer));
     }
@@ -503,9 +505,9 @@ pub fn try_redelegate(
     let delegated_amount = delegation.amount.amount.u128();
 
     if can_redelegate != delegated_amount {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Cannot redelegate full delegation amount",
-        )));
+        return Err(
+            ContractError::Std(StdError::generic_err("Cannot redelegate full delegation amount"))
+        );
     }
 
     config.validators[0].address = validator_address.clone();
@@ -532,10 +534,12 @@ pub fn try_redelegate(
     };
 
     messages.push(CosmosMsg::Staking(redelegate_msg));
-    let answer = to_json_binary(&ExecuteResponse::Redelegate {
-        amount: Uint128::new(can_redelegate),
-        status: ResponseStatus::Success,
-    })?;
+    let answer = to_json_binary(
+        &(ExecuteResponse::Redelegate {
+            amount: Uint128::new(can_redelegate),
+            status: ResponseStatus::Success,
+        })
+    )?;
 
     return Ok(Response::new().add_messages(messages).set_data(answer));
 }
@@ -548,12 +552,10 @@ fn query_config(deps: Deps) -> StdResult<QueryResponse> {
 pub fn query_user_info(deps: Deps, address: String) -> StdResult<QueryResponse> {
     let config = CONFIG_ITEM.load(deps.storage)?;
     let min_tier = config.min_tier();
-    let user_info = USER_INFOS
-        .may_load(deps.storage, address)?
-        .unwrap_or(state::UserInfo {
-            tier: min_tier,
-            ..Default::default()
-        });
+    let user_info = USER_INFOS.may_load(deps.storage, address)?.unwrap_or(state::UserInfo {
+        tier: min_tier,
+        ..Default::default()
+    });
 
     let answer = user_info.to_answer();
     return Ok(answer);
@@ -563,24 +565,19 @@ pub fn query_withdrawals(
     deps: Deps,
     address: String,
     start: Option<u32>,
-    limit: Option<u32>,
+    limit: Option<u32>
 ) -> StdResult<QueryResponse> {
-    let withdrawals = WITHDRAWALS_LIST
-        .may_load(deps.storage, address)?
-        .unwrap_or_default();
+    let withdrawals = WITHDRAWALS_LIST.may_load(deps.storage, address)?.unwrap_or_default();
     let amount = withdrawals.len();
 
     let start = start.unwrap_or(0);
     let limit = limit.unwrap_or(50);
 
-    // let withdrawals = withdrawals.partition_point(pred) .paging(&deps.storage, start, limit)?;
-    // let serialized_withdrawals = withdrawals.into_iter().map(|w| w.to_serialized()).collect();
-
     let mut serialized_withdrawals: Vec<SerializedWithdrawals> = Vec::new();
     for i in start..start + limit {
         let index: usize = i.try_into().unwrap();
         if index < amount {
-            serialized_withdrawals.push(withdrawals[index].to_serialized())
+            serialized_withdrawals.push(withdrawals[index].to_serialized());
         }
     }
 
@@ -591,125 +588,3 @@ pub fn query_withdrawals(
 
     Ok(answer)
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use std::marker::PhantomData;
-
-//     use super::*;
-//     use cosmwasm_std::testing::{ mock_env, mock_info, MockStorage, MockApi, MockQuerier};
-//     use cosmwasm_std::{coins,  OwnedDeps};
-
-//     #[test]
-//     fn deposite() {
-
-//         let msg = InstantiateMsg {
-//             validator: "orai183xtf2wmcah9fh5kpdr47wlspv3w47c0lgvwvf".to_string(),
-//             admin: Some("orai1zwlmtugzr5wk5rxcmrchj2aeu8s8unktlqzmat".to_string()),
-//             deposits: [
-//               Uint128::new(300),
-//               Uint128::new(100),
-//               Uint128::new(20),
-//               Uint128::new(10),
-//               Uint128::new(1)
-//             ].to_vec()
-//           };
-
-//         let mut mydeps = OwnedDeps {
-//             storage: MockStorage::default(),
-//             api: MockApi::default(),
-//             querier: MockQuerier::default(),
-//             custom_query_type: PhantomData::default(),
-//         };
-
-//         let info: MessageInfo = mock_info("creator", &coins(2, "ORAI"));
-//         let _res = instantiate(mydeps.as_mut(), mock_env(), info, msg).unwrap();
-
-//         // beneficiary can release it
-//         let info = mock_info("anyone", &coins(20000, "ORAI"));
-//         let msg = ExecuteMsg::Deposit { padding: Some("".to_string()) };
-//         let _res = execute(mydeps.as_mut(), mock_env(), info, msg).unwrap();
-
-//         // should increase counter by 1
-//         // let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-//         // let value: GetCountResponse = from_binary(&res).unwrap();
-//         // assert_eq!(18, value.count);
-//     }
-
-//     #[test]
-//     fn change_admin() {
-
-//         let msg = InstantiateMsg {
-//             validator: "orai183xtf2wmcah9fh5kpdr47wlspv3w47c0lgvwvf".to_string(),
-//             admin: Some("orai1zwlmtugzr5wk5rxcmrchj2aeu8s8unktlqzmat".to_string()),
-//             deposits: [
-//               Uint128::new(300),
-//               Uint128::new(100),
-//               Uint128::new(20),
-//               Uint128::new(10),
-//               Uint128::new(1)
-//             ].to_vec()
-//           };
-
-//         let mut mydeps = OwnedDeps {
-//             storage: MockStorage::default(),
-//             api: MockApi::default(),
-//             querier: MockQuerier::default(),
-//             custom_query_type: PhantomData::default(),
-//         };
-
-//         let info: MessageInfo = mock_info("creator", &coins(2, "ORAI"));
-//         let _res = instantiate(mydeps.as_mut(), mock_env(), info, msg).unwrap();
-
-//         // beneficiary can release it
-//         let info = mock_info("orai1zwlmtugzr5wk5rxcmrchj2aeu8s8unktlqzmat", &coins(20000, "ORAI"));
-//         let msg = ExecuteMsg::ChangeAdmin { admin: "orai1zwlmtugzr5wk5rxcmrchj2aeu8s8unktlqzmat".to_string(),  padding: Some("".to_string()) };
-//         let _res = execute(mydeps.as_mut(), mock_env(), info, msg).unwrap();
-
-//         // should increase counter by 1
-//         // let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-//         // let value: GetCountResponse = from_binary(&res).unwrap();
-//         // assert_eq!(18, value.count);
-//     }
-
-//     #[test]
-//     fn withdraw() {
-
-//         let msg = InstantiateMsg {
-//             validator: "orai183xtf2wmcah9fh5kpdr47wlspv3w47c0lgvwvf".to_string(),
-//             admin: Some("orai1zwlmtugzr5wk5rxcmrchj2aeu8s8unktlqzmat".to_string()),
-//             deposits: [
-//               Uint128::new(300),
-//               Uint128::new(100),
-//               Uint128::new(20),
-//               Uint128::new(10),
-//               Uint128::new(1)
-//             ].to_vec()
-//           };
-
-//         let mut mydeps = OwnedDeps {
-//             storage: MockStorage::default(),
-//             api: MockApi::default(),
-//             querier: MockQuerier::default(),
-//             custom_query_type: PhantomData::default(),
-//         };
-
-//         let info: MessageInfo = mock_info("creator", &coins(2, "ORAI"));
-//         let _res = instantiate(mydeps.as_mut(), mock_env(), info, msg).unwrap();
-
-//         // beneficiary can release it
-//         let info = mock_info("orai1zwlmtugzr5wk5rxcmrchj2aeu8s8unktlqzmat", &coins(20000, "ORAI"));
-//         let msg = ExecuteMsg::Deposit { padding: Some("".to_string()) };
-//         let _res = execute(mydeps.as_mut(), mock_env(), info, msg).unwrap();
-
-//         let info = mock_info("orai1zwlmtugzr5wk5rxcmrchj2aeu8s8unktlqzmat", &coins(20000, "ORAI"));
-//         let msg = ExecuteMsg::Withdraw { padding: None } ;
-//         let _res = execute(mydeps.as_mut(), mock_env(), info, msg).unwrap();
-
-//         // should increase counter by 1
-//         // let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-//         // let value: GetCountResponse = from_binary(&res).unwrap();
-//         // assert_eq!(18, value.count);
-//     }
-
-// }
