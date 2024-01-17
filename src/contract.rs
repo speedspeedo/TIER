@@ -1,3 +1,5 @@
+use std::borrow::BorrowMut;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -16,6 +18,8 @@ use cosmwasm_std::{
     StdResult,
     SubMsg,
     Uint128,
+    StakingQuery,
+    AllDelegationsResponse,
 };
 
 use cosmwasm_std::DistributionMsg;
@@ -546,12 +550,14 @@ pub fn try_redelegate(
 
 fn query_config(deps: Deps) -> StdResult<QueryResponse> {
     let config = CONFIG_ITEM.load(deps.storage)?;
-    config.to_answer()
+    config.to_answer(deps)
 }
 
 pub fn query_user_info(deps: Deps, address: String) -> StdResult<QueryResponse> {
     let config = CONFIG_ITEM.load(deps.storage)?;
     let min_tier = config.min_tier();
+    // Get Tier from staking amount
+
     let user_info = USER_INFOS.may_load(deps.storage, address)?.unwrap_or(state::UserInfo {
         tier: min_tier,
         ..Default::default()
@@ -587,4 +593,34 @@ pub fn query_withdrawals(
     };
 
     Ok(answer)
+}
+
+pub fn get_tier_with_stake(deps: DepsMut, address: &str) -> u8 {
+    let config = CONFIG_ITEM.load(deps.storage).unwrap();
+    let mut usd_deposits = config.usd_deposits;
+    usd_deposits.push(0);
+
+    let delegation_query = (StakingQuery::AllDelegations {
+        delegator: address.into(),
+    }).into();
+
+    // Since we don't own 'deps', we can still use reference to execute queries
+    let all_delegations: AllDelegationsResponse = deps.querier.query(&delegation_query).unwrap();
+
+    if all_delegations.delegations.is_empty() {
+        return usd_deposits.len().checked_add(1).unwrap() as u8;
+    }
+
+    let staked_amount_orai = all_delegations.delegations[0].amount.amount;
+    let orai_price_oracle = OraiPriceOracle::new(&deps).unwrap();
+
+    let mut id = 1;
+    for usd_deposit in usd_deposits {
+        let orai_deposit: u128 = orai_price_oracle.orai_amount(usd_deposit);
+        if staked_amount_orai >= Uint128::new(orai_deposit) {
+            return id;
+        }
+        id += 1;
+    }
+    return id;
 }

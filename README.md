@@ -3,7 +3,7 @@
 cargo wasm
 
 docker run --rm -v "$(pwd)":/code \
-  --mount type=volume,source="$(basename "$(pwd)")\_cache",target=/code/target \
+ --mount type=volume,source="$(basename "$(pwd)")\_cache",target=/code/target \
  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
  cosmwasm/rust-optimizer:0.12.11
 
@@ -20,8 +20,8 @@ RES=$(oraid tx wasm instantiate "$TIER_CODE_ID" \
 "weight": "100"
 }],  
  "oraiswap_contract": {  
- "usdt_contract": "orai1sthrn5ep8ls5vzz8f9gp89khhmedahhdqd244dh9uqzk3hx2pzrsrpzcas",  
- "orai_swap_router_contract": "orai1vhndln95yd7rngslzvf6sax6axcshkxqpmpr886ntelh28p9ghuqawp9hn"
+ "usdt_contract": "orai1laj3d4zledty0r0vd7m3gem4cd7cyk09m608863p3t7p6sm6xmusru4l5p",  
+ "orai_swap_router_contract": "orai1e4k9zhjpz3a0q6fgspwj3ug5fhc3t2emtxuvtra79hs70gqq7m0sg8kdd5"
 },
 "deposits": ["25000", "7500", "1500", "250"],
 "admin":"'"${WALLET_ADDRESS}"'"
