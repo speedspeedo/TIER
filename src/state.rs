@@ -13,7 +13,6 @@ use cosmwasm_std::{
     StakingQuery,
     AllDelegationsResponse,
     Deps,
-    DepsMut,
 };
 use cw_storage_plus::{ Item, Map };
 use serde::{ Deserialize, Serialize };

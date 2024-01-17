@@ -1,5 +1,3 @@
-use std::borrow::BorrowMut;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -201,8 +199,6 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
 
     let mut orai_deposit = received_funds.amount.u128();
 
-    let min_tier = config.min_tier();
-
     // Get Tier from staking amount
 
     let old_user_info = USER_INFOS.may_load(deps.storage, sender.clone())?.unwrap_or(
@@ -275,18 +271,6 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
         };
 
         let msg = CosmosMsg::Bank(send_msg);
-
-        // let err_msg = format!(
-        //     "{:?}, {}, {}, {}, {}, {}",
-        //     msg,
-        //     new_tier_deposit,
-        //     orai_deposit,
-        //     orai_price_ocracle.orai_amount(new_tier_deposit),
-        //     staked_amount.staked_usd_amount,
-        //     staked_amount.staked_orai_amount
-        // );
-
-        // return Err(ContractError::Std(StdError::generic_err(&err_msg)));
 
         messages.push(SubMsg::new(msg));
     }
@@ -596,7 +580,6 @@ fn query_config(deps: Deps) -> StdResult<QueryResponse> {
 
 pub fn query_user_info(deps: Deps, address: String) -> StdResult<QueryResponse> {
     let config = CONFIG_ITEM.load(deps.storage)?;
-    let min_tier = config.min_tier();
     // Get Tier from staking amount
     let staked_amount = get_staked_amount(deps, &address);
     let old_user_info = USER_INFOS.may_load(deps.storage, address.clone())?.unwrap_or(
@@ -653,9 +636,6 @@ pub struct StakedAmount {
 }
 
 pub fn get_staked_amount(deps: Deps, address: &str) -> StakedAmount {
-    let config = CONFIG_ITEM.load(deps.storage).unwrap();
-    let mut usd_deposits = config.usd_deposits;
-
     let delegation_query = (StakingQuery::AllDelegations {
         delegator: address.into(),
     }).into();
