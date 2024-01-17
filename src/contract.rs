@@ -193,21 +193,42 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
     let config = CONFIG_ITEM.load(deps.storage)?;
     config.assert_contract_active()?;
 
+    let sender = info.sender.to_string();
+
+    let staked_amount = get_staked_amount(deps.as_ref(), &sender);
+
     let received_funds = get_received_funds(&deps, &info)?;
 
-    let orai_deposit = received_funds.amount.u128();
+    let mut orai_deposit = received_funds.amount.u128();
+
+    let min_tier = config.min_tier();
+
+    // Get Tier from staking amount
+
+    let old_user_info = USER_INFOS.may_load(deps.storage, sender.clone())?.unwrap_or(
+        state::UserInfo {
+            ..Default::default()
+        }
+    );
+
+    let total_usd_deposit = old_user_info.usd_deposit
+        .checked_add(staked_amount.staked_usd_amount)
+        .unwrap();
+    let tier = config.tier_by_deposit(total_usd_deposit);
+
+    let mut user_info = USER_INFOS.may_load(deps.storage, sender)?.unwrap_or(state::UserInfo {
+        tier,
+        ..Default::default()
+    });
+    //
+
+    // Add already staked orai and last user's orai deposit
+    orai_deposit = orai_deposit.checked_add(staked_amount.staked_orai_amount).unwrap();
 
     let orai_price_ocracle = OraiPriceOracle::new(&deps)?;
 
     let usd_deposit: u128 = orai_price_ocracle.usd_amount(orai_deposit);
 
-    let sender = info.sender.to_string();
-    let min_tier = config.min_tier();
-
-    let mut user_info = USER_INFOS.may_load(deps.storage, sender)?.unwrap_or(state::UserInfo {
-        tier: min_tier,
-        ..Default::default()
-    });
     let current_tier = user_info.tier;
     let old_usd_deposit = user_info.usd_deposit;
     let new_usd_deposit = old_usd_deposit.checked_add(usd_deposit).unwrap();
@@ -222,13 +243,16 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
         let next_tier = current_tier.checked_sub(1).unwrap();
         let next_tier_deposit: u128 = config.deposit_by_tier(next_tier);
 
-        let expected_deposit_usd = next_tier_deposit.checked_sub(old_usd_deposit).unwrap();
-        let expected_deposit_scrt = orai_price_ocracle.orai_amount(expected_deposit_usd);
+        let expected_deposit_usd = next_tier_deposit
+            .checked_sub(old_usd_deposit + staked_amount.staked_usd_amount)
+            .unwrap();
+        let expected_deposit_orai = orai_price_ocracle.orai_amount(expected_deposit_usd);
 
         let err_msg = format!(
-            "You should deposit at least {} USD ({} ORAI)",
+            "You should deposit at least {} USD ({} orai) for {}",
             expected_deposit_usd,
-            expected_deposit_scrt
+            expected_deposit_orai,
+            orai_deposit
         );
 
         return Err(ContractError::Std(StdError::generic_err(&err_msg)));
@@ -239,7 +263,7 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
 
     // let usd_refund = new_usd_deposit.checked_sub(new_tier_deposit).unwrap();
     let orai_refund = orai_deposit
-        .checked_sub(orai_price_ocracle.orai_amount(new_tier_deposit - old_usd_deposit))
+        .checked_sub(orai_price_ocracle.orai_amount(new_tier_deposit))
         .unwrap();
 
     if orai_refund != 0 {
@@ -251,28 +275,45 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
         };
 
         let msg = CosmosMsg::Bank(send_msg);
+
+        // let err_msg = format!(
+        //     "{:?}, {}, {}, {}, {}, {}",
+        //     msg,
+        //     new_tier_deposit,
+        //     orai_deposit,
+        //     orai_price_ocracle.orai_amount(new_tier_deposit),
+        //     staked_amount.staked_usd_amount,
+        //     staked_amount.staked_orai_amount
+        // );
+
+        // return Err(ContractError::Std(StdError::generic_err(&err_msg)));
+
         messages.push(SubMsg::new(msg));
     }
     let old_orai_deposit = user_info.orai_deposit;
     user_info.tier = new_tier;
     user_info.timestamp = env.block.time.seconds();
-    user_info.usd_deposit = new_tier_deposit;
+    // user_info.usd_deposit = new_tier_deposit.checked_sub(staked_amount.staked_usd_amount).unwrap();
     // user_info.orai_deposit = user_info.orai_deposit.checked_add(orai_deposit).unwrap();
-    user_info.orai_deposit = orai_price_ocracle.orai_amount(user_info.usd_deposit);
+    user_info.orai_deposit = orai_price_ocracle
+        .orai_amount(new_tier_deposit)
+        .checked_sub(staked_amount.staked_orai_amount)
+        .unwrap();
+    user_info.usd_deposit = orai_price_ocracle.usd_amount(user_info.orai_deposit) + 1;
     USER_INFOS.save(deps.storage, info.sender.to_string(), &user_info)?;
 
     let validators = config.validators;
 
     for validator in validators {
         let individual_amount =
-            (user_info.orai_deposit.checked_sub(old_orai_deposit).unwrap() * validator.weight) /
-            100;
+            ((user_info.orai_deposit - old_orai_deposit) * validator.clone().weight) / 100;
         let delegate_msg = StakingMsg::Delegate {
             validator: validator.address,
             amount: coin(individual_amount, ORAI),
         };
 
         let msg: CosmosMsg = CosmosMsg::Staking(delegate_msg);
+
         messages.push(SubMsg::new(msg));
     }
 
@@ -557,9 +598,20 @@ pub fn query_user_info(deps: Deps, address: String) -> StdResult<QueryResponse> 
     let config = CONFIG_ITEM.load(deps.storage)?;
     let min_tier = config.min_tier();
     // Get Tier from staking amount
+    let staked_amount = get_staked_amount(deps, &address);
+    let old_user_info = USER_INFOS.may_load(deps.storage, address.clone())?.unwrap_or(
+        state::UserInfo {
+            ..Default::default()
+        }
+    );
+
+    let total_usd_deposit = old_user_info.usd_deposit
+        .checked_add(staked_amount.staked_usd_amount)
+        .unwrap();
+    let tier = config.tier_by_deposit(total_usd_deposit);
 
     let user_info = USER_INFOS.may_load(deps.storage, address)?.unwrap_or(state::UserInfo {
-        tier: min_tier,
+        tier,
         ..Default::default()
     });
 
@@ -595,10 +647,14 @@ pub fn query_withdrawals(
     Ok(answer)
 }
 
-pub fn get_tier_with_stake(deps: DepsMut, address: &str) -> u8 {
+pub struct StakedAmount {
+    staked_usd_amount: u128,
+    staked_orai_amount: u128,
+}
+
+pub fn get_staked_amount(deps: Deps, address: &str) -> StakedAmount {
     let config = CONFIG_ITEM.load(deps.storage).unwrap();
     let mut usd_deposits = config.usd_deposits;
-    usd_deposits.push(0);
 
     let delegation_query = (StakingQuery::AllDelegations {
         delegator: address.into(),
@@ -608,19 +664,24 @@ pub fn get_tier_with_stake(deps: DepsMut, address: &str) -> u8 {
     let all_delegations: AllDelegationsResponse = deps.querier.query(&delegation_query).unwrap();
 
     if all_delegations.delegations.is_empty() {
-        return usd_deposits.len().checked_add(1).unwrap() as u8;
+        return StakedAmount {
+            staked_orai_amount: 0,
+            staked_usd_amount: 0,
+        };
     }
 
-    let staked_amount_orai = all_delegations.delegations[0].amount.amount;
-    let orai_price_oracle = OraiPriceOracle::new(&deps).unwrap();
+    let mut staked_amount_orai = Uint128::new(0);
 
-    let mut id = 1;
-    for usd_deposit in usd_deposits {
-        let orai_deposit: u128 = orai_price_oracle.orai_amount(usd_deposit);
-        if staked_amount_orai >= Uint128::new(orai_deposit) {
-            return id;
-        }
-        id += 1;
+    for delegation in all_delegations.delegations {
+        staked_amount_orai += delegation.amount.amount;
     }
-    return id;
+
+    let orai_price_oracle = OraiPriceOracle::deps_new(&deps).unwrap();
+
+    let statked_usd_amount = orai_price_oracle.usd_amount(staked_amount_orai.into());
+
+    return StakedAmount {
+        staked_usd_amount: u128::from(statked_usd_amount),
+        staked_orai_amount: staked_amount_orai.into(),
+    };
 }
