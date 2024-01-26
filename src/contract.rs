@@ -494,7 +494,7 @@ pub fn try_withdraw_rewards(
 
 fn query_config(deps: Deps) -> StdResult<QueryResponse> {
     let config = CONFIG_ITEM.load(deps.storage)?;
-    config.to_answer(deps)
+    config.to_answer()
 }
 
 pub fn query_user_info(deps: Deps, address: String) -> StdResult<QueryResponse> {

@@ -5,7 +5,7 @@ use crate::msg::{
     SerializedWithdrawals,
     ValidatorWithWeight,
 };
-use cosmwasm_std::{ StdError, StdResult, Storage, Uint128, Deps };
+use cosmwasm_std::{ StdError, StdResult, Storage, Uint128 };
 use cw_storage_plus::{ Item, Map };
 use serde::{ Deserialize, Serialize };
 
@@ -62,7 +62,7 @@ impl Config {
         Ok(())
     }
 
-    pub fn to_answer(&self, deps: Deps) -> StdResult<QueryResponse> {
+    pub fn to_answer(&self) -> StdResult<QueryResponse> {
         let admin = self.admin.clone(); //api.addr_humanize(&self.admin)?;
         let min_tier = self.usd_deposits.len().checked_add(1).unwrap() as u8;
 
