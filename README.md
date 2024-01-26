@@ -16,7 +16,7 @@ echo $TIER_CODE_ID
 RES=$(oraid tx wasm instantiate "$TIER_CODE_ID" \
  '{
 "validators": [{
-"address": "oraivaloper1f9judw4xg7d8k4d4ywgz8wsxvuesur739sr88g",
+"address": "oraivaloper18hr8jggl3xnrutfujy2jwpeu0l76azprkxn29v",
 "weight": "100"
 }],  
  "oraiswap_contract": {  
@@ -25,14 +25,14 @@ RES=$(oraid tx wasm instantiate "$TIER_CODE_ID" \
 },
 "deposits": ["25000", "7500", "1500", "250"],
 "admin":"'"${WALLET_ADDRESS}"'"
-    }'                                               \
-    --gas auto                                    \
-    --gas-adjustment 1.1          \
-    --gas-prices 0.1orai    \
-    --no-admin     \
-    --from "$KEY_NAME" \
+}' \
+ --gas auto \
+ --gas-adjustment 1.1 \
+ --gas-prices 0.1orai \
+ --no-admin \
+ --from ttt \
  --label "YOUI_ORAI" \
- --home $ORAI_HOME_DIR -y)
+ --home ~/.oraid -y)
 
 TIER_CONTRACT=$(echo $RES | jq -r '.logs[0].events[0].attributes[0].value')
 

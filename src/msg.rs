@@ -57,10 +57,6 @@ pub enum ExecuteMsg {
     WithdrawRewards {
         recipient: Option<String>,
     },
-    Redelegate {
-        validator_address: String,
-        recipient: Option<String>,
-    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
@@ -127,7 +123,6 @@ pub enum QueryResponse {
         usd_deposits: Vec<Uint128>,
         min_tier: u8,
         oraiswap_contract: OraiswapContract,
-        share: AllDelegationsResponse,
     },
     UserInfo {
         tier: u8,

@@ -101,8 +101,6 @@ pub fn execute(
         ExecuteMsg::WithdrawRewards { recipient, .. } => {
             try_withdraw_rewards(deps, env, info, recipient)
         }
-        ExecuteMsg::Redelegate { validator_address, recipient, .. } =>
-            try_redelegate(deps, env, info, validator_address, recipient),
     };
 
     return response;
@@ -492,85 +490,6 @@ pub fn try_withdraw_rewards(
     )?;
 
     Ok(Response::new().add_messages(msgs).set_data(answer))
-}
-
-pub fn try_redelegate(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    validator_address: String,
-    recipient: Option<String>
-) -> Result<Response, ContractError> {
-    let mut config: Config = CONFIG_ITEM.load(deps.storage)?;
-    if info.sender.clone() != config.admin {
-        return Err(ContractError::Std(StdError::generic_err("Unauthorized")));
-    }
-
-    let first_validator = &config.validators[0];
-    let old_validator = first_validator.clone().address;
-    let delegation = utils::query_delegation(&deps, &env, &old_validator);
-
-    if old_validator == validator_address {
-        return Err(ContractError::Std(StdError::generic_err("Redelegation to the same validator")));
-    }
-
-    if delegation.is_err() {
-        config.validators[0].address = validator_address;
-        CONFIG_ITEM.save(deps.storage, &config)?;
-
-        let answer = to_json_binary(
-            &(ExecuteResponse::Redelegate {
-                amount: Uint128::zero(),
-                status: ResponseStatus::Success,
-            })
-        )?;
-
-        return Ok(Response::new().set_data(answer));
-    }
-
-    let delegation = delegation.unwrap().unwrap();
-    let can_withdraw = delegation.accumulated_rewards[0].amount.u128();
-    let can_redelegate = delegation.can_redelegate.amount.u128();
-    let delegated_amount = delegation.amount.amount.u128();
-
-    if can_redelegate != delegated_amount {
-        return Err(
-            ContractError::Std(StdError::generic_err("Cannot redelegate full delegation amount"))
-        );
-    }
-
-    config.validators[0].address = validator_address.clone();
-    CONFIG_ITEM.save(deps.storage, &config)?;
-
-    let mut messages = Vec::with_capacity(2);
-    if can_withdraw != 0 {
-        let admin = config.admin;
-        let _recipient = recipient.unwrap_or(admin);
-        let withdraw_msg = DistributionMsg::WithdrawDelegatorReward {
-            validator: old_validator.clone(),
-        };
-
-        let msg = CosmosMsg::Distribution(withdraw_msg);
-
-        messages.push(msg);
-    }
-
-    let coin = coin(can_redelegate, ORAI);
-    let redelegate_msg = StakingMsg::Redelegate {
-        src_validator: old_validator,
-        dst_validator: validator_address,
-        amount: coin,
-    };
-
-    messages.push(CosmosMsg::Staking(redelegate_msg));
-    let answer = to_json_binary(
-        &(ExecuteResponse::Redelegate {
-            amount: Uint128::new(can_redelegate),
-            status: ResponseStatus::Success,
-        })
-    )?;
-
-    return Ok(Response::new().add_messages(messages).set_data(answer));
 }
 
 fn query_config(deps: Deps) -> StdResult<QueryResponse> {

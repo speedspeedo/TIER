@@ -5,25 +5,13 @@ use crate::msg::{
     SerializedWithdrawals,
     ValidatorWithWeight,
 };
-use cosmwasm_std::{
-    StdError,
-    StdResult,
-    Storage,
-    Uint128,
-    StakingQuery,
-    AllDelegationsResponse,
-    Deps,
-};
+use cosmwasm_std::{ StdError, StdResult, Storage, Uint128, Deps };
 use cw_storage_plus::{ Item, Map };
 use serde::{ Deserialize, Serialize };
 
 pub const CONFIG_ITEM: Item<Config> = Item::new("config");
 pub const WITHDRAWALS_LIST: Map<String, Vec<UserWithdrawal>> = Map::new("withdraw"); //Deque<UserWithdrawal> = Deque::new("withdraw");
 pub const USER_INFOS: Map<String, UserInfo> = Map::new("user_info");
-
-// pub fn withdrawals_list(address: &CanonicalAddr) -> Deque<'static, UserWithdrawal> {
-//     WITHDRAWALS_LIST.push_back(address.as_slice())
-// }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Config {
@@ -77,11 +65,6 @@ impl Config {
     pub fn to_answer(&self, deps: Deps) -> StdResult<QueryResponse> {
         let admin = self.admin.clone(); //api.addr_humanize(&self.admin)?;
         let min_tier = self.usd_deposits.len().checked_add(1).unwrap() as u8;
-        let delegation_query = (StakingQuery::AllDelegations {
-            delegator: "orai1q6d2dqq857uuypu5l47pj5eqkgmqre8lgc58q9".to_string().into(),
-        }).into();
-        let temp: AllDelegationsResponse = deps.querier.query(&delegation_query)?;
-        let share = temp;
 
         return Ok(QueryResponse::Config {
             admin,
@@ -93,7 +76,6 @@ impl Config {
                 .iter()
                 .map(|d| Uint128::from(*d))
                 .collect(),
-            share,
         });
     }
 }
