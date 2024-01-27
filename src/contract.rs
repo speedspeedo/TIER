@@ -24,7 +24,6 @@ use cosmwasm_std::DistributionMsg;
 use cosmwasm_std::StakingMsg;
 
 use crate::band::OraiPriceOracle;
-// use crate::utils;
 use crate::error::ContractError;
 use crate::msg::{
     ContractStatus,
@@ -255,14 +254,11 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
     let mut messages: Vec<SubMsg> = Vec::with_capacity(2);
     let new_tier_deposit = config.deposit_by_tier(new_tier);
 
-    // let usd_refund = new_usd_deposit.checked_sub(new_tier_deposit).unwrap();
     let orai_refund = orai_deposit
         .checked_sub(orai_price_ocracle.orai_amount(new_tier_deposit))
         .unwrap();
 
     if orai_refund != 0 {
-        // orai_deposit = orai_deposit.checked_sub(orai_refund).unwrap();
-
         let send_msg = BankMsg::Send {
             to_address: info.sender.to_string(),
             amount: coins(orai_refund, ORAI),
@@ -275,8 +271,6 @@ pub fn try_deposit(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Respons
     let old_orai_deposit = user_info.orai_deposit;
     user_info.tier = new_tier;
     user_info.timestamp = env.block.time.seconds();
-    // user_info.usd_deposit = new_tier_deposit.checked_sub(staked_amount.staked_usd_amount).unwrap();
-    // user_info.orai_deposit = user_info.orai_deposit.checked_add(orai_deposit).unwrap();
     user_info.orai_deposit = orai_price_ocracle
         .orai_amount(new_tier_deposit)
         .checked_sub(staked_amount.staked_orai_amount)
